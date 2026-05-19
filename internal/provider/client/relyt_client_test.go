@@ -421,3 +421,53 @@ func TestRelytClient_GetUserSecurityPolicy(t *testing.T) {
 	marshal, err = json.Marshal(suc)
 	fmt.Println(string(marshal))
 }
+
+// === Entra ID SSO smoke tests ===
+// Fill in with values from your local test environment before running.
+const (
+	testEntraIdDmsHost = "<https://api-<your-dwsu-domain>>"
+	testEntraIdDwsuId  = "<your-dwsu-id>"
+)
+
+func TestPutEntraIdConfig(t *testing.T) {
+	resp, err := client.PutEntraIdConfig(ctx, testEntraIdDmsHost, testEntraIdDwsuId, EntraIdConfig{
+		TenantId:   "00000000-0000-0000-0000-000000000000",
+		ClientId:   "11111111-1111-1111-1111-111111111111",
+		TenantType: "single",
+		Enabled:    true,
+	})
+	if err != nil {
+		t.Fatalf("put err: %v", err)
+	}
+	fmt.Printf("put resp: %+v\n", resp)
+}
+
+func TestGetEntraIdConfig(t *testing.T) {
+	cfg, err := client.GetEntraIdConfig(ctx, testEntraIdDmsHost, testEntraIdDwsuId)
+	if err != nil {
+		t.Fatalf("get err: %v", err)
+	}
+	fmt.Printf("get resp: %+v\n", cfg)
+}
+
+func TestDeleteEntraIdConfig(t *testing.T) {
+	err := client.DeleteEntraIdConfig(ctx, testEntraIdDmsHost, testEntraIdDwsuId)
+	if err != nil {
+		t.Fatalf("delete err: %v", err)
+	}
+}
+
+func TestEntraIdConfig_NotFoundReadIdempotent(t *testing.T) {
+	// First DELETE to guarantee not-found state, then GET.
+	_ = client.DeleteEntraIdConfig(ctx, testEntraIdDmsHost, testEntraIdDwsuId)
+	cfg, err := client.GetEntraIdConfig(ctx, testEntraIdDmsHost, testEntraIdDwsuId)
+	if err != nil {
+		// If err != nil, the not-found path is NOT being handled — likely because
+		// CODE_ENTRAID_CONFIG_NOT_FOUND is wrong, or backend returns HTTP 4xx
+		// (not 200 + business code). See Task 16.
+		t.Fatalf("expected nil err on missing config (means CODE_ENTRAID_CONFIG_NOT_FOUND is wrong or backend returns non-200 HTTP); got %v", err)
+	}
+	if cfg != nil {
+		t.Fatalf("expected nil cfg, got %+v", cfg)
+	}
+}
