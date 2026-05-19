@@ -2,7 +2,7 @@
 data "relyt_dwsus" "all" {}
 
 resource "relyt_dwsu_entraid_config" "sso" {
-  dwsu_id   = data.relyt_dwsus.all.records[0].id
+  dwsu_id   = data.relyt_dwsus.all.dwsu_list[0].id
   tenant_id = "00000000-0000-0000-0000-000000000000" # Azure portal -> Directory (tenant) ID
   client_id = "00000000-0000-0000-0000-000000000000" # Azure portal -> Application (client) ID
 

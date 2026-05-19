@@ -23,7 +23,7 @@ Azure tenant can log into the DMS Console using their Microsoft account.
    HTTP 403 Permission denied: Account admin role required to manage SSO config
    ```
 3. The DWSU must already exist; reference it via `relyt_dwsu.<name>.id` or
-   `data.relyt_dwsus.<name>.records[*].id`.
+   `data.relyt_dwsus.<name>.dwsu_list[*].id`.
 
 ## Example Usage
 
@@ -32,7 +32,7 @@ Azure tenant can log into the DMS Console using their Microsoft account.
 data "relyt_dwsus" "all" {}
 
 resource "relyt_dwsu_entraid_config" "sso" {
-  dwsu_id   = data.relyt_dwsus.all.records[0].id
+  dwsu_id   = data.relyt_dwsus.all.dwsu_list[0].id
   tenant_id = "00000000-0000-0000-0000-000000000000" # Azure portal -> Directory (tenant) ID
   client_id = "00000000-0000-0000-0000-000000000000" # Azure portal -> Application (client) ID
 

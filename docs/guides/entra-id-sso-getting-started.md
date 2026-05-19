@@ -152,11 +152,11 @@ provider "relyt" {
 }
 
 # 引用已存在的 DWSU。如果你只有一个 DWSU，索引 [0] 就够；多 DWSU 时
-# 用 .records[*].id 然后过滤更稳妥。
+# 用 .dwsu_list[*].id 然后过滤更稳妥。
 data "relyt_dwsus" "all" {}
 
 resource "relyt_dwsu_entraid_config" "sso" {
-  dwsu_id   = data.relyt_dwsus.all.records[0].id
+  dwsu_id   = data.relyt_dwsus.all.dwsu_list[0].id
   tenant_id = "<paste-your-tenant-id-from-step-4.2>"
   client_id = "<paste-your-client-id-from-step-4.2>"
 
@@ -442,7 +442,7 @@ data "relyt_dwsus" "all" {}
 locals {
   # 把所有 DWSU 都开 SSO；如果只想给特定 DWSU 配，把这一段改成显式列表
   target_dwsus = {
-    for d in data.relyt_dwsus.all.records :
+    for d in data.relyt_dwsus.all.dwsu_list :
     d.alias => d.id
   }
 }
