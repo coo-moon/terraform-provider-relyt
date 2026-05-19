@@ -19,6 +19,7 @@ func TestScroll(t *testing.T) {
 	}
 	databaseClient, _ := client.NewRelytDatabaseClient(relytDatabaseClientConfig)
 	start := time.Now()
+	catalog := "catalog"
 	records, _ := ScrollPageRecords(&diag.Diagnostics{}, func(pageSize, pageNum int) ([]*client.SchemaMeta, error) {
 		listRecords, err := CommonRetry(context.TODO(), func() (*client.CommonPage[client.SchemaMeta], error) {
 			start = time.Now()
@@ -27,7 +28,7 @@ func TestScroll(t *testing.T) {
 					PageSize:   pageSize,
 					PageNumber: pageNum,
 				},
-				Database: "catalog",
+				Database: &catalog,
 			})
 			msg := ""
 			if err != nil {
