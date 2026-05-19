@@ -3,6 +3,7 @@ package resource
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -10,6 +11,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"terraform-provider-relyt/internal/provider/client"
+	"terraform-provider-relyt/internal/provider/common"
+	tfModel "terraform-provider-relyt/internal/provider/model"
 )
 
 var (
@@ -63,15 +68,49 @@ func (r *dwsuEntraIdConfig) Schema(_ context.Context, _ resource.SchemaRequest, 
 	}
 }
 
-// Stubbed; implemented in subsequent tasks.
 func (r *dwsuEntraIdConfig) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	r.put(ctx, req.Plan, &resp.Diagnostics, &resp.State)
 }
-func (r *dwsuEntraIdConfig) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-}
+
 func (r *dwsuEntraIdConfig) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	r.put(ctx, req.Plan, &resp.Diagnostics, &resp.State)
+}
+
+func (r *dwsuEntraIdConfig) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 }
 func (r *dwsuEntraIdConfig) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 }
 func (r *dwsuEntraIdConfig) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("dwsu_id"), req, resp)
+}
+
+// put applies the plan to the backend via PUT /api/entraid-config and writes
+// the same plan into TF state on success. Shared by Create and Update because
+// the backend endpoint is upsert-semantics.
+func (r *dwsuEntraIdConfig) put(ctx context.Context, plan tfsdk.Plan, diags *diag.Diagnostics, state *tfsdk.State) {
+	var m tfModel.EntraIdConfigModel
+	diags.Append(plan.Get(ctx, &m)...)
+	if diags.HasError() {
+		return
+	}
+
+	dmsHost := common.RouteDwsuOpenApiHost(ctx, m.DwsuId.ValueString(), r.client, diags)
+	if diags.HasError() {
+		return
+	}
+
+	_, err := common.CommonRetry(ctx, func() (*client.EntraIdConfig, error) {
+		return r.client.PutEntraIdConfig(ctx, dmsHost, m.DwsuId.ValueString(), client.EntraIdConfig{
+			TenantId:   m.TenantId.ValueString(),
+			ClientId:   m.ClientId.ValueString(),
+			TenantType: m.TenantType.ValueString(),
+			Enabled:    m.Enabled.ValueBool(),
+		})
+	})
+	if err != nil {
+		diags.AddError("Error writing entraid-config",
+			"PUT /api/entraid-config failed for dwsu_id="+m.DwsuId.ValueString()+": "+err.Error())
+		return
+	}
+	diags.Append(state.Set(ctx, &m)...)
 }
