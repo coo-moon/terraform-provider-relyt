@@ -458,14 +458,13 @@ func TestDeleteEntraIdConfig(t *testing.T) {
 }
 
 func TestEntraIdConfig_NotFoundReadIdempotent(t *testing.T) {
-	// First DELETE to guarantee not-found state, then GET.
+	// Backend behaviour (confirmed against dev DMS on 2026-05-19): when no config
+	// is present, GET returns HTTP 200 + code:200 + data:null. So GetEntraIdConfig
+	// returns (nil, nil) — no special error code handling is needed.
 	_ = client.DeleteEntraIdConfig(ctx, testEntraIdDmsHost, testEntraIdDwsuId)
 	cfg, err := client.GetEntraIdConfig(ctx, testEntraIdDmsHost, testEntraIdDwsuId)
 	if err != nil {
-		// If err != nil, the not-found path is NOT being handled — likely because
-		// CODE_ENTRAID_CONFIG_NOT_FOUND is wrong, or backend returns HTTP 4xx
-		// (not 200 + business code). See Task 16.
-		t.Fatalf("expected nil err on missing config (means CODE_ENTRAID_CONFIG_NOT_FOUND is wrong or backend returns non-200 HTTP); got %v", err)
+		t.Fatalf("expected nil err on missing config, got %v", err)
 	}
 	if cfg != nil {
 		t.Fatalf("expected nil cfg, got %+v", cfg)

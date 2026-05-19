@@ -425,15 +425,9 @@ func (p *RelytClient) PatchUserSecurityPolicy(ctx context.Context, regionUri, dw
 func (p *RelytClient) GetEntraIdConfig(ctx context.Context, dmsHost, dwsuId string) (*EntraIdConfig, error) {
 	path := "/api/entraid-config"
 	resp := CommonRelytResponse[EntraIdConfig]{}
-	handler := func(response *CommonRelytResponse[EntraIdConfig], respString []byte) (*CommonRelytResponse[EntraIdConfig], error) {
-		if response.Code != CODE_SUCCESS && response.Code != CODE_ENTRAID_CONFIG_NOT_FOUND {
-			body := string(respString)
-			tflog.Error(ctx, "error call api! entraid-config GET resp code not success! dwsuId: "+dwsuId+" body: "+body)
-			return response, fmt.Errorf(body)
-		}
-		return response, nil
-	}
-	err := doHttpRequest(p, ctx, dmsHost, path, "GET", &resp, nil, nil, handler)
+	// Backend returns code:200, data:null when the config is absent — no special
+	// not-found code needed. resp.Data == nil signals "not configured" to callers.
+	err := doHttpRequest(p, ctx, dmsHost, path, "GET", &resp, nil, nil, nil)
 	if err != nil {
 		tflog.Error(ctx, "Error get entraid-config: "+err.Error())
 		return nil, err
@@ -455,15 +449,9 @@ func (p *RelytClient) PutEntraIdConfig(ctx context.Context, dmsHost, dwsuId stri
 func (p *RelytClient) DeleteEntraIdConfig(ctx context.Context, dmsHost, dwsuId string) error {
 	path := "/api/entraid-config"
 	resp := CommonRelytResponse[string]{}
-	handler := func(response *CommonRelytResponse[string], respString []byte) (*CommonRelytResponse[string], error) {
-		if response.Code != CODE_SUCCESS && response.Code != CODE_ENTRAID_CONFIG_NOT_FOUND {
-			body := string(respString)
-			tflog.Error(ctx, "error call api! entraid-config DELETE resp code not success! dwsuId: "+dwsuId+" body: "+body)
-			return response, fmt.Errorf(body)
-		}
-		return nil, nil
-	}
-	err := doHttpRequest(p, ctx, dmsHost, path, "DELETE", &resp, nil, nil, handler)
+	// Backend returns code:200 success even when the config doesn't exist — DELETE
+	// is already idempotent on the server side, no special handler needed.
+	err := doHttpRequest(p, ctx, dmsHost, path, "DELETE", &resp, nil, nil, nil)
 	if err != nil {
 		tflog.Info(ctx, "delete entraid-config err: "+err.Error())
 	}

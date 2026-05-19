@@ -10,11 +10,6 @@ const (
 	//CODE_ROLE_NOT_EXIST = 134085
 	CODE_DPS_NOT_FOUND  = 137073
 	CODE_DWSU_NOT_FOUND = 65544
-
-	// CODE_ENTRAID_CONFIG_NOT_FOUND will be confirmed during smoke testing (Task 16).
-	// Placeholder used by GetEntraIdConfig/DeleteEntraIdConfig to allow idempotent
-	// not-found handling once the real code is known.
-	CODE_ENTRAID_CONFIG_NOT_FOUND = 0 // TBD — replace after smoke test
 )
 
 type CommonRelytResponse[T any] struct {
