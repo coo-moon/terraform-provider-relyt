@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"terraform-provider-relyt/internal/provider/client"
 	"terraform-provider-relyt/internal/provider/common"
 	tfModel "terraform-provider-relyt/internal/provider/model"
@@ -77,6 +78,38 @@ func (r *dwsuEntraIdConfig) Update(ctx context.Context, req resource.UpdateReque
 }
 
 func (r *dwsuEntraIdConfig) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var state tfModel.EntraIdConfigModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	dmsHost := common.RouteDwsuOpenApiHost(ctx, state.DwsuId.ValueString(), r.client, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	cfg, err := common.CommonRetry(ctx, func() (*client.EntraIdConfig, error) {
+		return r.client.GetEntraIdConfig(ctx, dmsHost, state.DwsuId.ValueString())
+	})
+	if err != nil {
+		resp.Diagnostics.AddError("Error reading entraid-config",
+			"GET /api/entraid-config failed for dwsu_id="+state.DwsuId.ValueString()+": "+err.Error())
+		return
+	}
+
+	// Drift: backend has no config (externally deleted or never created).
+	// Remove from state → next plan will show '+ create'.
+	if cfg == nil {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
+	state.TenantId = types.StringValue(cfg.TenantId)
+	state.ClientId = types.StringValue(cfg.ClientId)
+	state.TenantType = types.StringValue(cfg.TenantType)
+	state.Enabled = types.BoolValue(cfg.Enabled)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 func (r *dwsuEntraIdConfig) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 }
