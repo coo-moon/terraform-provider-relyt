@@ -10,6 +10,11 @@ const (
 	//CODE_ROLE_NOT_EXIST = 134085
 	CODE_DPS_NOT_FOUND  = 137073
 	CODE_DWSU_NOT_FOUND = 65544
+
+	// CODE_ENTRAID_CONFIG_NOT_FOUND will be confirmed during smoke testing (Task 16).
+	// Placeholder used by GetEntraIdConfig/DeleteEntraIdConfig to allow idempotent
+	// not-found handling once the real code is known.
+	CODE_ENTRAID_CONFIG_NOT_FOUND = 0 // TBD — replace after smoke test
 )
 
 type CommonRelytResponse[T any] struct {
@@ -265,4 +270,14 @@ type UserSecurityPolicy struct {
 	ExtraMfaProtectionScopes     []string `json:"extraMfaProtectionScopes,omitempty"`
 	MFAStrategy                  string   `json:"mfaStrategy,omitempty"`
 	RequiredChangingInitPassword bool     `json:"requiredChangingInitPassword,omitempty"`
+}
+
+// EntraIdConfig is the request/response body for /api/entraid-config.
+// Note: Enabled has no `omitempty` because `false` must be sent over the wire
+// to soft-disable SSO while retaining tenant/client IDs.
+type EntraIdConfig struct {
+	TenantId   string `json:"tenantId,omitempty"`
+	ClientId   string `json:"clientId,omitempty"`
+	TenantType string `json:"tenantType,omitempty"`
+	Enabled    bool   `json:"enabled"`
 }
