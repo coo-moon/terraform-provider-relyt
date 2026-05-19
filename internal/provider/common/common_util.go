@@ -63,6 +63,31 @@ func PickOpenApiURIFromEndpoints(endpoints []client.Endpoints) (string, error) {
 	return "", fmt.Errorf("no endpoint of type 'openapi' found")
 }
 
+// RouteDwsuOpenApiHost fetches the DWSU model and returns its openapi endpoint URI.
+// Adds diagnostics on failure (mirrors RouteRegionUri's style).
+func RouteDwsuOpenApiHost(ctx context.Context, dwsuId string,
+	relytClient *client.RelytClient, diag *diag.Diagnostics) string {
+	dwsu, err := CommonRetry(ctx, func() (*client.DwsuModel, error) {
+		return relytClient.GetDwsu(ctx, dwsuId)
+	})
+	if err != nil || dwsu == nil {
+		errMsg := "GetDwsu returned nil"
+		if err != nil {
+			errMsg = err.Error()
+		}
+		diag.AddError("error fetching DWSU",
+			"fail to fetch DWSU for openapi host resolution. dwsuId: "+dwsuId+" error: "+errMsg)
+		return ""
+	}
+	uri, perr := PickOpenApiURIFromEndpoints(dwsu.Endpoints)
+	if perr != nil {
+		diag.AddError("openapi endpoint not found on DWSU",
+			"dwsuId: "+dwsuId+" error: "+perr.Error())
+		return ""
+	}
+	return uri
+}
+
 func RetryFunction[T any](ctx context.Context, retryNum, intervalSecond int,
 	backoffCoefficient float64,
 	retryableFunc func() (*T, error)) (*T, error) {
