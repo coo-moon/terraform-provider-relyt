@@ -112,6 +112,29 @@ func (r *dwsuEntraIdConfig) Read(ctx context.Context, req resource.ReadRequest, 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 func (r *dwsuEntraIdConfig) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state tfModel.EntraIdConfigModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	dmsHost := common.RouteDwsuOpenApiHost(ctx, state.DwsuId.ValueString(), r.client, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	_, err := common.CommonRetry(ctx, func() (*string, error) {
+		if e := r.client.DeleteEntraIdConfig(ctx, dmsHost, state.DwsuId.ValueString()); e != nil {
+			return nil, e
+		}
+		s := "ok"
+		return &s, nil
+	})
+	if err != nil {
+		resp.Diagnostics.AddError("Error deleting entraid-config",
+			"DELETE /api/entraid-config failed for dwsu_id="+state.DwsuId.ValueString()+": "+err.Error())
+	}
+	// No explicit state clear — framework removes the resource automatically on success.
 }
 func (r *dwsuEntraIdConfig) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("dwsu_id"), req, resp)
