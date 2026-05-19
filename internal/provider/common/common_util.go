@@ -52,6 +52,17 @@ func RouteRegionUri(ctx context.Context, dwsuId string, relytClient *client.Rely
 	return meta
 }
 
+// PickOpenApiURIFromEndpoints returns the URI of the first endpoint whose
+// Type is "openapi". Pure function (no network), unit-testable.
+func PickOpenApiURIFromEndpoints(endpoints []client.Endpoints) (string, error) {
+	for _, ep := range endpoints {
+		if ep.Type == "openapi" && ep.URI != "" {
+			return ep.URI, nil
+		}
+	}
+	return "", fmt.Errorf("no endpoint of type 'openapi' found")
+}
+
 func RetryFunction[T any](ctx context.Context, retryNum, intervalSecond int,
 	backoffCoefficient float64,
 	retryableFunc func() (*T, error)) (*T, error) {

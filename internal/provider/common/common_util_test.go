@@ -75,3 +75,50 @@ func TestScrollDatabase(t *testing.T) {
 	marshal, _ := json.Marshal(records)
 	fmt.Println("size:" + strconv.Itoa(len(records)) + "body" + string(marshal))
 }
+
+func TestPickOpenApiURI_Found(t *testing.T) {
+	endpoints := []client.Endpoints{
+		{Type: "web_console", URI: "https://console.example.com"},
+		{Type: "openapi", URI: "https://api.example.com"},
+		{Type: "database", URI: "db.example.com:5432"},
+	}
+	uri, err := PickOpenApiURIFromEndpoints(endpoints)
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if uri != "https://api.example.com" {
+		t.Fatalf("expected https://api.example.com, got %q", uri)
+	}
+}
+
+func TestPickOpenApiURI_NotFound(t *testing.T) {
+	endpoints := []client.Endpoints{
+		{Type: "web_console", URI: "https://console.example.com"},
+		{Type: "database", URI: "db.example.com:5432"},
+	}
+	_, err := PickOpenApiURIFromEndpoints(endpoints)
+	if err == nil {
+		t.Fatal("expected error when no openapi endpoint present, got nil")
+	}
+}
+
+func TestPickOpenApiURI_EmptyList(t *testing.T) {
+	_, err := PickOpenApiURIFromEndpoints([]client.Endpoints{})
+	if err == nil {
+		t.Fatal("expected error for empty endpoint list, got nil")
+	}
+}
+
+func TestPickOpenApiURI_FirstMatchWins(t *testing.T) {
+	endpoints := []client.Endpoints{
+		{Type: "openapi", URI: "https://first.example.com"},
+		{Type: "openapi", URI: "https://second.example.com"},
+	}
+	uri, err := PickOpenApiURIFromEndpoints(endpoints)
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if uri != "https://first.example.com" {
+		t.Fatalf("expected first match, got %q", uri)
+	}
+}
