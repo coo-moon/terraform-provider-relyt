@@ -45,6 +45,10 @@ func (r *dwsuEntraIdConfig) Schema(_ context.Context, _ resource.SchemaRequest, 
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 				Description:   "The ID of the DWSU to attach Entra ID SSO config to.",
 			},
+			"dms_host": schema.StringAttribute{
+				Optional:    true,
+				Description: "Explicit DMS API host (e.g. 'https://<dwsu-domain>'). When set, the provider skips the control-plane DwsuModel lookup that would otherwise be used to resolve the host from dwsu_id. Useful for air-gapped / single-tenant / DMS-only deployments where the control-plane service is not reachable. Leave unset (default) for normal multi-tenant environments where the control plane is available.",
+			},
 			"tenant_id": schema.StringAttribute{
 				Required:    true,
 				Description: "Azure AD tenant (directory) GUID.",
@@ -84,7 +88,7 @@ func (r *dwsuEntraIdConfig) Read(ctx context.Context, req resource.ReadRequest, 
 		return
 	}
 
-	dmsHost := common.RouteDwsuOpenApiHost(ctx, state.DwsuId.ValueString(), r.client, &resp.Diagnostics)
+	dmsHost := r.resolveDmsHost(ctx, &state, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -118,7 +122,7 @@ func (r *dwsuEntraIdConfig) Delete(ctx context.Context, req resource.DeleteReque
 		return
 	}
 
-	dmsHost := common.RouteDwsuOpenApiHost(ctx, state.DwsuId.ValueString(), r.client, &resp.Diagnostics)
+	dmsHost := r.resolveDmsHost(ctx, &state, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -140,6 +144,17 @@ func (r *dwsuEntraIdConfig) ImportState(ctx context.Context, req resource.Import
 	resource.ImportStatePassthroughID(ctx, path.Root("dwsu_id"), req, resp)
 }
 
+// resolveDmsHost returns the host to send /api/entraid-config requests to.
+// If the user supplied dms_host explicitly, use it (skips control-plane lookup
+// — useful for air-gapped / DMS-only deployments). Otherwise resolve via the
+// control plane: GetDwsu(id) → Endpoints[type==openapi].URI.
+func (r *dwsuEntraIdConfig) resolveDmsHost(ctx context.Context, m *tfModel.EntraIdConfigModel, diags *diag.Diagnostics) string {
+	if !m.DmsHost.IsNull() && !m.DmsHost.IsUnknown() && m.DmsHost.ValueString() != "" {
+		return m.DmsHost.ValueString()
+	}
+	return common.RouteDwsuOpenApiHost(ctx, m.DwsuId.ValueString(), r.client, diags)
+}
+
 // put applies the plan to the backend via PUT /api/entraid-config and writes
 // the same plan into TF state on success. Shared by Create and Update because
 // the backend endpoint is upsert-semantics.
@@ -150,7 +165,7 @@ func (r *dwsuEntraIdConfig) put(ctx context.Context, plan tfsdk.Plan, diags *dia
 		return
 	}
 
-	dmsHost := common.RouteDwsuOpenApiHost(ctx, m.DwsuId.ValueString(), r.client, diags)
+	dmsHost := r.resolveDmsHost(ctx, &m, diags)
 	if diags.HasError() {
 		return
 	}
