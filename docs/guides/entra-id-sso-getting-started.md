@@ -153,6 +153,7 @@ provider "relyt" {
 
 # 引用已存在的 DWSU。如果你只有一个 DWSU，索引 [0] 就够；多 DWSU 时
 # 用 .dwsu_list[*].id 然后过滤更稳妥。
+# 若希望指定且已知 dwsu id, 直接硬编码即可
 data "relyt_dwsus" "all" {}
 
 resource "relyt_dwsu_entraid_config" "sso" {
