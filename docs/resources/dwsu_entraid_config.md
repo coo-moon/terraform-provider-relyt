@@ -83,8 +83,22 @@ resource "relyt_dwsu_entraid_config" "sso" {
 
 ### Optional
 
+- `dms_host` (String) Explicit DMS API host (e.g. `https://<dwsu-domain>`). When set, the provider skips the control-plane DwsuModel lookup that would otherwise be used to resolve the host from `dwsu_id`. Useful for air-gapped / single-tenant / DMS-only deployments where the control-plane service is not reachable. Leave unset (default) for normal multi-tenant environments where the control plane is available.
 - `enabled` (Boolean) Whether SSO is active. Set false to retain config but disable login. Default true.
 - `tenant_type` (String) One of 'single' (only users in the configured tenant can log in) or 'multi' (any Azure org user). Default 'single'. Invalid values are rejected by the backend at apply time.
+
+## Air-gapped / DMS-only deployments
+
+Some deployments run only the DMS service without a separately-deployed control plane (GCS). In that case, set `dms_host` directly to bypass the control-plane lookup:
+
+```terraform
+resource "relyt_dwsu_entraid_config" "sso" {
+  dwsu_id   = "h713"                          # any unique non-empty string; used only for log correlation
+  dms_host  = "http://<dms-pod-ip-or-host>"   # required when no control plane is available
+  tenant_id = "..."
+  client_id = "..."
+}
+```
 
 ## Import
 

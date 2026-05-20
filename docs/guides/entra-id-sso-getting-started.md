@@ -308,6 +308,28 @@ terraform import relyt_dwsu_entraid_config.sso dwsu-abc123
 
 ---
 
+## 6.5 Air-gap / DMS-only 部署（用 `dms_host` 跳过控制面）
+
+**场景**：你的 Relyt 环境只部署了 DMS，没有部署 GCS（控制面服务），或控制面不可达。资源默认会走 `控制面 GetDwsu(dwsu_id) → 拿到 Endpoints[openapi].URI` 这一步，控制面不可达时这步会卡。
+
+解法：直接给资源一个 `dms_host` 字段，跳过控制面查询：
+
+```hcl
+resource "relyt_dwsu_entraid_config" "sso" {
+  dwsu_id   = "h713"                          # 任意非空字符串（只用于日志关联）
+  dms_host  = "http://<dms-pod-ip-or-host>"   # 直接指 DMS API host
+  tenant_id = "..."
+  client_id = "..."
+  # 其余字段不变
+}
+```
+
+行为差异：
+- `dms_host` **未设**（默认）：走原逻辑，调控制面 `GET /dwsu/<id>` 拿 host
+- `dms_host` **已设**：直接用，跳过控制面
+
+适用：单租户私有化部署、CI dev 集群、临时测试环境。
+
 ## 7. 进阶：多角色 provider alias
 
 **场景**：你想用一份 `.tf` 同时管 DWSU lifecycle（需 SYSTEMADMIN）和 SSO config（需 ACCOUNTADMIN）。
